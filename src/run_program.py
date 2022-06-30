@@ -6,6 +6,22 @@ sys.path.append('/global_utils/src/')
 import module_utils
 import aws_s3_utils
 import file_utils
+import xmltodict, json
+
+def xml2json( xml_in, as_json_string = 'True' ):
+    json_out = xml_in[:-4]+'.json'
+    with open(xml_in) as xml_file, open(json_out,'w') as fout:
+        data_dict = xmltodict.parse(xml_file.read())
+        if as_json_string[0].upper() == 'T':
+            json_str = json.dumps(data_dict)
+            fout.write(json_str)
+        else:
+            json.dump(data_dict, fout)
+            # print(data_dict)
+        # json_str_print = json.dumps(data_dict, indent=2)
+        # print(json_str_print)
+    return json_out
+
 
 def run_sars_cov2_ncbi( arg_list ):
     """
@@ -45,19 +61,41 @@ def run_sars_cov2_ncbi( arg_list ):
         if d not in existing_samples_dict:
             print('trying to download {}'.format(str(d)))
             try:
+                # get SRA
                 indir = '{}/{}/{}'.format(remote_dir_in.rstrip('/'),d,d)
+                outfile_base = os.path.join(output_dir,d)
                 print('fetching...{}'.format(indir))
                 aws_s3_utils.downloadFile_S3('{}/{}/{}'.format(remote_dir_in.rstrip('/'),d,d), output_dir)
-#                subprocess.check_call('prefetch --max-size 30g {}'.format(str(d)), shell=True)
+                ## subprocess.check_call('prefetch --max-size 30g {}'.format(str(d)), shell=True)
+                # convert to FASTQ
                 print('dumping fastq...{}'.format(str(d)))
-                subprocess.check_call('fastq-dump --gzip {}'.format(str(os.path.join(output_dir,d))), shell=True)
+                subprocess.check_call('fastq-dump --gzip {}'.format(str(outfile_base)), shell=True)
                 downloaded.append(d)
+                # get metadata
+                # cmd = 'esearch -db sra -query {} | efetch -format xml'.format(d)
+                # ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+                # output_xml_stream = ps.communicate()[0]
+                # print(output_xml_stream)
+                # output_xml_file = '{}.xml'.format(os.path.join(output_dir,d))
+                # with open(output_xml_file,'w') as fout:
+                #    fout.write(output_xml_stream.decode("utf-8"))
+                output_xml_file = os.path.join(output_dir, '{}.xml'.format(d))
+                # temp_xml_file = os.path.join(output_dir,'tempp.xml')
+                print('getting metadata xml from NCBI...')
+                # subprocess.check_call('/root/edirect/esearch -db sra -query {} > {}'.format(d, temp_xml_file), shell=True)
+                # subprocess.check_call('/root/edirect/efetch -format xml < {} > {}'.format(temp_xml_file, output_xml_file), shell=True)
+                subprocess.check_call('/root/edirect/esearch -db sra -query | /root/edirect/efetch -format xml > {}'.format(output_xml_file), shell=True)
+                print('outputing json metadata...')
+                output_json_file = xml2json( output_xml_file )
+                # remove temporary files
                 subprocess.check_call('rm -rf {}'.format(os.path.join(output_dir,d)), shell=True)
+                subprocess.check_call('rm {}'.format(output_xml_file), shell=True)
+                # subprocess.check_call('rm {}'.format(temp_xml_file), shell=True)                
             except subprocess.CalledProcessError:
                 print('WARNING: Could not download {}'.format(str(d)))
                 not_downloaded.append(d)
         else:
-            already_updated.append(d)
+            already_uploaded.append(d)
             
     print('TOTAL DATASETS: {}'.format(str(len(datasets))))
     print('DATASETS DOWNLOADED SUCCESSFULLY: {}'.format(str(len(downloaded))))

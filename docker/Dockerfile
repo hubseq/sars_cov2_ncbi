@@ -15,6 +15,7 @@ RUN pip install awscli boto3
 RUN conda install -c anaconda pandas
 RUN conda install -c anaconda numpy
 RUN conda install -c bioconda sra-tools
+RUN pip install xmltodict
 WORKDIR /
 
 # INSTALL SRA toolkit
@@ -24,6 +25,11 @@ WORKDIR /
 # install NCBI edirect for accessing NBCI metadata
 # RUN sh -c "$(curl -fsSL ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"
 RUN sh -c "$(wget -q ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"
+# RUN mkdir /edirect
+# RUN ls $HOME/edirect/
+# COPY --from=build $HOME/edirect/ /edirect/
+# COPY $HOME/edirect/esearch /
+# COPY $HOME/edirect/efetch /
 
 # copy relevant scripts to root dir
 RUN mkdir -p global_utils/src
@@ -33,6 +39,7 @@ COPY src/global_utils/src/module_utils.py /global_utils/src/
 COPY src/global_utils/src/file_utils.py /global_utils/src/
 COPY src/global_utils/src/global_keys.py /global_utils/src/
 COPY src/global_utils/src/aws_s3_utils.py /global_utils/src/
-ENV PATH="/usr/local/bin/:/sratoolkit.3.0.0-centos_linux64/bin:$HOME/edirect:$PATH"
+ENV PATH="/usr/local/bin/:/sratoolkit.3.0.0-centos_linux64/bin:$HOME/edirect/:$PATH"
+# RUN /root/edirect/esearch
 
 ENTRYPOINT ["python","/run_main.py"] 
