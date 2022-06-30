@@ -23,18 +23,39 @@ def run_sars_cov2_ncbi( arg_list ):
     list_only = module_utils.getArgument( arg_list, '-listonly' )
     
     # list all datasets and new datasets (check output dir for existing datasets)
-#    datasets = aws_s3_utils.listSubFolders(remote_dir_in[0], [], [], '--no-sign-request')
-#    print('DATASETS: {}'.format(str(datasets)))
+    datasets = aws_s3_utils.listSubFolders(remote_dir_in[0], [], [], '--no-sign-request')
 
-    # make sure sra toolkit works
+    # just test with first 10 datasets for now
+    datasets = datasets[0:10]
+    print('DATASETS: {}'.format(str(datasets_short)))
+    
+    # get existing datasets
     os.chdir(output_dir)
-    print(str(remote_dir_out))
-    sf = aws_s3_utils.listSubFiles(remote_dir_out, ['.fastq', '.fq'], [])
-    print('IN OUTPUT DIR: {}'.format(str(sf)))
-    for f in sf:
-        print('GET SAMPLE ID: {}'.format(file_utils.getSampleIDfromFASTQ(f)))
-#    subprocess.call(['prefetch','ERR4424705'])
-#    subprocess.call(['fastq-dump', 'ERR4424705'])
+    # print(str(remote_dir_out))
+    existing_files = aws_s3_utils.listSubFiles(remote_dir_out, ['.fastq', '.fq'], [])
+    print('EXISTING FILES: {}'.format(str(existing_files)))
+    existing_samples_list = list(set(list(map(lambda f: file_utils.getSampleIDfromFASTQ(f), existing_files)))) # list(set()) gets unique
+    existing_samples_dict = dict(zip(existing_samples_list, len(existing_samples_list)*[1])) # dict is faster to search
+    print('EXISTING SAMPLES: {}'.format(list(existing_samples_list)))
+    
+    # make sure sra toolkit works
+    downloaded, not_downloaded, already_uploaded = [], [], []
+    for d in datasets:
+        if d not in existing_samples_dict:
+            try:
+                subprocess.check_call('prefetch {}'.format(str(d)), shell=True)
+                subprocess.check_call('fastq-dump --gzip {}'.format(str(d)), shell=True)
+                downloaded.append(d)
+            except CalledProcessError:
+                print('WARNING: Could not download {}'.format(str(d)))
+                not_downloaded.append(d)
+        else:
+            already_updated.append(d)
+            
+    print('TOTAL DATASETS: {}'.format(str(len(datasets))))
+    print('DATASETS DOWNLOADED SUCCESSFULLY: {}'.format(str(len(downloaded))))
+    print('ERROR - NOT DOWNLOADED: {}'.format(str(len(not_downloaded))))
+    print('ALREADY UPLOADED AND EXISTS: {}'.format(str(len(already_uploaded))))
     return
 
 
