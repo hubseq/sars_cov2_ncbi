@@ -17,8 +17,13 @@ RUN conda install -c anaconda numpy
 RUN conda install -c bioconda sra-tools
 WORKDIR /
 
+# INSTALL SRA toolkit
+# RUN mkdir /sratoolkit.3.0.0-centos_linux64
+# COPY sratoolkit.3.0.0-centos_linux64/ /sratoolkit.3.0.0-centos_linux64/
+
 # install NCBI edirect for accessing NBCI metadata
-RUN sh -c "$(curl -fsSL ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"
+# RUN sh -c "$(curl -fsSL ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"
+RUN sh -c "$(wget -q ftp://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"
 
 # copy relevant scripts to root dir
 RUN mkdir -p global_utils/src
@@ -28,6 +33,6 @@ COPY src/global_utils/src/module_utils.py /global_utils/src/
 COPY src/global_utils/src/file_utils.py /global_utils/src/
 COPY src/global_utils/src/global_keys.py /global_utils/src/
 COPY src/global_utils/src/aws_s3_utils.py /global_utils/src/
-ENV PATH="/usr/local/bin/:$HOME/edirect:$PATH"
+ENV PATH="/usr/local/bin/:/sratoolkit.3.0.0-centos_linux64/bin:$HOME/edirect:$PATH"
 
 ENTRYPOINT ["python","/run_main.py"] 

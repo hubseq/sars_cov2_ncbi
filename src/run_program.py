@@ -17,17 +17,18 @@ def run_sars_cov2_ncbi( arg_list ):
     -o <output_dir>
     """
     print('ARG LIST: {}'.format(str(arg_list)))
-    remote_dir_in = module_utils.getArgument( arg_list, '-remotein', 'list' )  # remote input dir
+    remote_dir_in = module_utils.getArgument( arg_list, '-remotein' )  # remote input dir
     remote_dir_out = module_utils.getArgument( arg_list, '-remoteout', 'list' )  # remote output dir
     output_dir = module_utils.getArgument( arg_list, '-o' )  # local output dir
     list_only = module_utils.getArgument( arg_list, '-listonly' )
     
     # list all datasets and new datasets (check output dir for existing datasets)
-    datasets = aws_s3_utils.listSubFolders(remote_dir_in[0], [], [], '--no-sign-request')
+    # datasets = aws_s3_utils.listSubFolders(remote_dir_in, [], [], '--no-sign-request')
 
     # just test with first 10 datasets for now
-    datasets = datasets[0:10]
-    print('DATASETS: {}'.format(str(datasets_short)))
+    # datasets = datasets[0:3]
+    datasets = ['DRR001793', 'DRR009863'] # , 'DRR029830']
+    print('DATASETS: {}'.format(str(datasets)))
     
     # get existing datasets
     os.chdir(output_dir)
@@ -42,11 +43,17 @@ def run_sars_cov2_ncbi( arg_list ):
     downloaded, not_downloaded, already_uploaded = [], [], []
     for d in datasets:
         if d not in existing_samples_dict:
+            print('trying to download {}'.format(str(d)))
             try:
-                subprocess.check_call('prefetch {}'.format(str(d)), shell=True)
-                subprocess.check_call('fastq-dump --gzip {}'.format(str(d)), shell=True)
+                indir = '{}/{}/{}'.format(remote_dir_in.rstrip('/'),d,d)
+                print('fetching...{}'.format(indir))
+                aws_s3_utils.downloadFile_S3('{}/{}/{}'.format(remote_dir_in.rstrip('/'),d,d), output_dir)
+#                subprocess.check_call('prefetch --max-size 30g {}'.format(str(d)), shell=True)
+                print('dumping fastq...{}'.format(str(d)))
+                subprocess.check_call('fastq-dump --gzip {}'.format(str(os.path.join(output_dir,d))), shell=True)
                 downloaded.append(d)
-            except CalledProcessError:
+                subprocess.check_call('rm -rf {}'.format(os.path.join(output_dir,d)), shell=True)
+            except subprocess.CalledProcessError:
                 print('WARNING: Could not download {}'.format(str(d)))
                 not_downloaded.append(d)
         else:
