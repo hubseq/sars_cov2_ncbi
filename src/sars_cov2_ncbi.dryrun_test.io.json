@@ -1,0 +1,1 @@
+{"input": ["s3://hubseq-data/test/chipseq/run_test1/README.txt"], "output": ["s3://hubseq-data/test/dnaseq_targeted/run_test1/sars_cov2_ncbi/"], "alternate_inputs": [], "alternate_outputs": [], "program_arguments": "", "sample_id": "sars_cov2_ncbi_test", "dryrun": ""}
